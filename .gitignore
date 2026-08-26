@@ -1,0 +1,4 @@
+# Protection AES (SecurityHook)
+aeskey*.txt
+credpassword*.txt
+config_migration.ps1

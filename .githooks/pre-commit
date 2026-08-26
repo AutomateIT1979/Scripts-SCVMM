@@ -1,0 +1,104 @@
+#!/bin/bash
+# ============================================================
+# Git pre-commit hook - TEMPLATE_BRS
+# Version : 2.0 — Secrets + Conventions PS
+# ============================================================
+
+echo ""
+echo "============================================================"
+echo "  PRE-COMMIT HOOK - TEMPLATE_BRS"
+echo "============================================================"
+
+# ------------------------------------------------------------
+# ÉTAPE INITIALE : Synchronisation des configurations IA
+# ------------------------------------------------------------
+echo "--> Synchronisation automatique des configurations et skills IA..."
+SYNC_SCRIPT="C:\\Dev\\GitHub\\.agents\\Sync-IASkills.ps1"
+if [ -f "$SYNC_SCRIPT" ] || [ -f "C:/Dev/GitHub/.agents/Sync-IASkills.ps1" ]; then
+    if uname -r 2>/dev/null | grep -qiE "microsoft|wsl"; then
+        PWSH_CMD="/mnt/c/Program Files/PowerShell/7/pwsh.exe"
+    else
+        PWSH_CMD="pwsh.exe"
+    fi
+    "$PWSH_CMD" -NoProfile -ExecutionPolicy Bypass -File "C:\\Dev\\GitHub\\.agents\\Sync-IASkills.ps1" -DisableDryRun
+    echo "  [OK] Synchronisation IA terminée."
+else
+    echo "  [INFO] Script de synchronisation IA introuvable, étape ignorée."
+fi
+echo ""
+
+# ------------------------------------------------------------
+# Résolution des chemins selon l'environnement (WSL2 / Git Bash)
+# ------------------------------------------------------------
+if uname -r 2>/dev/null | grep -qiE "microsoft|wsl"; then
+    REPO_ROOT_WSL=$(git rev-parse --show-toplevel)
+    REPO_ROOT_WIN=$(wslpath -w "$REPO_ROOT_WSL")
+    PWSH="/mnt/c/Program Files/PowerShell/7/pwsh.exe"
+else
+    REPO_ROOT_GIT=$(git rev-parse --show-toplevel)
+    REPO_ROOT_WIN=$(cygpath -w "$REPO_ROOT_GIT")
+    PWSH="pwsh.exe"
+fi
+
+# ------------------------------------------------------------
+# ÉTAPE 1 : Scan des secrets
+# ------------------------------------------------------------
+echo "--> Étape 1/2 : Analyse des secrets..."
+SCRIPT_SECRETS="${REPO_ROOT_WIN}\\Scan-Secrets.ps1"
+"$PWSH" -NoProfile -ExecutionPolicy Bypass -File "$SCRIPT_SECRETS"
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "  [ECHEC] Secrets détectés - commit bloqué."
+    echo "  Corriger les alertes CRITIQUE avant de commiter."
+    echo ""
+    exit 1
+fi
+
+echo "  [OK] Aucun secret CRITIQUE détecté."
+echo ""
+
+# ------------------------------------------------------------
+# ÉTAPE 2 : Vérification conventions PowerShell
+# ------------------------------------------------------------
+echo "--> Étape 2/2 : Vérification conventions PowerShell..."
+
+# Récupère uniquement les fichiers .ps1 stagés (pas tous les fichiers)
+STAGED_PS1=$(git diff --cached --name-only --diff-filter=ACM | grep '\.ps1$')
+
+if [ -z "$STAGED_PS1" ]; then
+    echo "  [OK] Aucun fichier .ps1 dans ce commit."
+else
+    SCRIPT_CONV="${REPO_ROOT_WIN}\\PS-Convention-Check.ps1"
+
+    if [ ! -f "$SCRIPT_CONV" ]; then
+        echo "  [ATTENTION] PS-Convention-Check.ps1 introuvable — vérification ignorée."
+    else
+        # Lancer sur chaque fichier .ps1 stagé
+        ALL_OK=true
+        while IFS= read -r psfile; do
+            PS1_WIN="${REPO_ROOT_WIN}\\${psfile//\//\\}"
+            "$PWSH" -NoProfile -ExecutionPolicy Bypass -File "$SCRIPT_CONV" -Path "$PS1_WIN"
+            if [ $? -ne 0 ]; then
+                ALL_OK=false
+            fi
+        done <<< "$STAGED_PS1"
+
+        if [ "$ALL_OK" = false ]; then
+            echo ""
+            echo "  [ECHEC] Violations de conventions PS détectées - commit bloqué."
+            echo "  Corriger les violations avant de commiter."
+            echo ""
+            exit 1
+        fi
+    fi
+fi
+
+echo "  [OK] Conventions PowerShell respectées."
+echo ""
+echo "============================================================"
+echo "  [OK] Tous les contrôles validés. Commit autorisé."
+echo "============================================================"
+echo ""
+exit 0
