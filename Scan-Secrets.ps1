@@ -52,6 +52,7 @@ $secretPatterns = @(
     @{ Pattern = 'svc_pbvmwexp_\d+';                  Niveau = 'CRITIQUE'; Scope = 'ALL';  Description = 'Compte de service explicite' },
     @{ Pattern = 'adm_scharcho';                      Niveau = 'CRITIQUE'; Scope = 'ALL';  Description = 'Compte admin personnel' },
     @{ Pattern = 'Password\s*=\s*[''"][^''"]{4,}';   Niveau = 'CRITIQUE'; Scope = 'ALL';  Description = 'Mot de passe en clair' },
+    @{ Pattern = '\$pass(word)?\s*=\s*[''"][^''"]{4,}'; Niveau = 'CRITIQUE'; Scope = 'ALL';  Description = 'Mot de passe en clair (variable $pass/$password)' },
     @{ Pattern = 'token\s*=\s*[''"][^''"]{8,}';      Niveau = 'CRITIQUE'; Scope = 'ALL';  Description = 'Token en clair' },
 
     # --- EMAILS (Scope ALL) ---
