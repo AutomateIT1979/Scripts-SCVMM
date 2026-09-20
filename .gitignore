@@ -2,3 +2,8 @@
 aeskey*.txt
 credpassword*.txt
 config_migration.ps1
+
+# Cache du moteur de workflow (Invoke-WorkflowTransition.ps1) — jamais
+# versionné : recalculé à chaque appel, ce n'est qu'une photo, jamais une
+# source de vérité (validé council 11/07/2026, Sabri/Codex/Antigravity)
+.agents-state.json
